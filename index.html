@@ -13,11 +13,29 @@
         .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
         .bar-transition { transition: width 1s ease-in-out; }
         #qr-code img { margin: 0 auto; border: 8px solid white; border-radius: 8px; }
+        /* Dodatkowy styl dla stanu ładowania */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4">
 
-    <div id="app" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+    <!-- Overlay ładowania -->
+    <div id="loading" class="loading-overlay">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p class="text-slate-600 font-medium">Łączenie z panelem wyników...</p>
+        </div>
+    </div>
+
+    <div id="app" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden mb-8 hidden">
         <!-- Header -->
         <div class="bg-indigo-600 p-6 text-white text-center relative">
             <h1 class="text-xl font-bold">Nastolatki 3.0: Live Quiz</h1>
@@ -131,27 +149,33 @@
             });
         };
 
-        // Poprawiona autoryzacja - czekamy na zakończenie logowania przed operacjami na DB
-        const initAuth = async () => {
-            return new Promise((resolve) => {
-                onAuthStateChanged(auth, (user) => {
+        // Zintegrowane logowanie i inicjalizacja aplikacji
+        const initApp = async () => {
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
                     currentUser = user;
-                    if (user) resolve(user);
-                });
-
-                const performSignIn = async () => {
-                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                        await signInWithCustomToken(auth, __initial_auth_token).catch(console.error);
-                    } else {
-                        await signInAnonymously(auth).catch(console.error);
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('app').classList.remove('hidden');
+                    generateQR();
+                    showQuestion();
+                } else {
+                    try {
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    } catch (err) {
+                        console.error("Auth error:", err);
+                        const loadingMsg = document.querySelector('#loading p');
+                        if (loadingMsg) loadingMsg.innerText = "Błąd połączenia. Spróbuj odświeżyć stronę.";
                     }
-                };
-                performSignIn();
+                }
             });
         };
 
         const saveVote = async (questionId, optionIndex) => {
-            if (!currentUser) await initAuth(); // Guard: upewnij się, że jesteśmy zalogowani
+            if (!currentUser) return;
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', questionId);
             try {
                 const snap = await getDoc(docRef);
@@ -222,7 +246,7 @@
                 statsArea.classList.remove('hidden');
                 sidebarQr.classList.remove('hidden');
                 document.getElementById('admin-toggle').innerText = "Widok Pytań";
-                await startStatsSync();
+                startStatsSync();
             } else {
                 quizContainer.classList.remove('hidden');
                 statsArea.classList.add('hidden');
@@ -232,8 +256,8 @@
             }
         };
 
-        const startStatsSync = async () => {
-            if (!currentUser) await initAuth(); // Guard
+        const startStatsSync = () => {
+            if (!currentUser) return;
             const q = quizData[currentQuestion];
             document.getElementById('stats-title').innerText = `Wyniki dla: ${q.question}`;
             
@@ -292,11 +316,8 @@
         document.getElementById('admin-toggle').onclick = toggleStats;
         document.getElementById('back-to-quiz').onclick = toggleStats;
 
-        window.onload = async () => {
-            generateQR();
-            await initAuth();
-            showQuestion();
-        };
+        // Uruchomienie aplikacji
+        initApp();
     </script>
 </body>
 </html>
