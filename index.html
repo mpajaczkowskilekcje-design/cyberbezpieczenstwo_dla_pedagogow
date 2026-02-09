@@ -12,8 +12,7 @@
         .option-btn:disabled { cursor: not-allowed; opacity: 0.8; }
         #qr-code img { margin: 0 auto; border: 4px solid white; border-radius: 4px; }
         .bar-transition { transition: width 0.8s ease-out; }
-        /* Styl dla płynnego pojawiania się */
-        #app { opacity: 0; transition: opacity 0.5s ease-in; }
+        #app { opacity: 0; transition: opacity 0.3s ease-in; }
         #app.visible { opacity: 1; }
     </style>
 </head>
@@ -77,25 +76,17 @@
             <!-- Sidebar QR -->
             <div class="w-full md:w-72 bg-slate-50 p-8 flex flex-col items-center justify-center text-center">
                 <p class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-[0.2em]">Dołącz do nas</p>
-                <div id="qr-code" class="bg-white p-2 rounded-lg shadow-md mb-6"></div>
+                <div id="qr-code" class="bg-white p-2 rounded-lg shadow-md mb-6 min-h-[140px] flex items-center justify-center"></div>
                 <p class="text-[11px] text-slate-400 leading-relaxed max-w-[180px]">Zeskanuj kod, aby otworzyć quiz na swoim telefonie</p>
             </div>
         </div>
     </div>
 
-    <!-- Firebase -->
+    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, doc, setDoc, updateDoc, increment, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-
-        // Konfiguracja Firebase
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'nask-quiz-v1';
-        const githubUrl = "https://mpajaczkowskilekcje-design.github.io/cyberbezpieczenstwo_dla_pedagogow/";
 
         const quizData = [
             { id: "q1", question: "W jakim wieku przeciętny polski nastolatek otrzymuje pierwszy smartfon z internetem?", options: ["7–8 lat", "9–10 lat", "11–12 lat", "Powyżej 13 lat"], correct: 1, rationale: "41% dzieci otrzymuje pierwszy telefon w wieku 9-10 lat." },
@@ -110,50 +101,36 @@
             { id: "q10", question: "Ilu uczniów szkół średnich czuje potrzebę ograniczenia czasu z telefonem?", options: ["10%", "25%", "Ponad 50%", "90%"], correct: 2, rationale: "56% uczniów widzi u siebie problem nadużywania smartfona." }
         ];
 
+        const githubUrl = "https://mpajaczkowskilekcje-design.github.io/cyberbezpieczenstwo_dla_pedagogow/";
         let currentQuestion = 0;
         let score = 0;
         let answered = false;
         let statsUnsubscribe = null;
         let userAuth = null;
-
-        // Natychmiastowy start
-        window.onload = () => {
-            const appEl = document.getElementById('app');
-            appEl.classList.add('visible');
-            
-            // Kod QR bez opóźnień
-            new QRCode(document.getElementById("qr-code"), {
-                text: githubUrl,
-                width: 140,
-                height: 140,
-                colorDark : "#4338ca",
-                colorLight : "#f8fafc"
-            });
-
-            // Próba połączenia w tle (nie blokuje quizu)
-            signInAnonymously(auth)
-                .then(res => userAuth = res.user)
-                .catch(e => console.log("Tryb offline - statystyki niedostępne"));
-            
-            showQuestion();
-        };
+        let db, auth;
 
         const showQuestion = () => {
             const q = quizData[currentQuestion];
-            document.getElementById('question-number').innerText = `Pytanie ${currentQuestion + 1} / ${quizData.length}`;
-            document.getElementById('question-text').innerText = q.question;
-            document.getElementById('progress-fill').style.width = `${((currentQuestion + 1) / quizData.length) * 100}%`;
-            
+            const qNum = document.getElementById('question-number');
+            const qText = document.getElementById('question-text');
+            const pFill = document.getElementById('progress-fill');
             const grid = document.getElementById('options-grid');
-            grid.innerHTML = '';
-            q.options.forEach((opt, i) => {
-                const btn = document.createElement('button');
-                btn.className = "option-btn text-left p-5 border-2 border-slate-200 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition-all font-medium text-slate-700 shadow-sm";
-                btn.innerText = opt;
-                btn.onclick = () => handleAnswer(i, btn);
-                grid.appendChild(btn);
-            });
-            document.getElementById('feedback').classList.add('hidden');
+            
+            if (qNum) qNum.innerText = `Pytanie ${currentQuestion + 1} / ${quizData.length}`;
+            if (qText) qText.innerText = q.question;
+            if (pFill) pFill.style.width = `${((currentQuestion + 1) / quizData.length) * 100}%`;
+            
+            if (grid) {
+                grid.innerHTML = '';
+                q.options.forEach((opt, i) => {
+                    const btn = document.createElement('button');
+                    btn.className = "option-btn text-left p-5 border-2 border-slate-200 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition-all font-medium text-slate-700 shadow-sm";
+                    btn.innerText = opt;
+                    btn.onclick = () => handleAnswer(i, btn);
+                    grid.appendChild(btn);
+                });
+            }
+            document.getElementById('feedback')?.classList.add('hidden');
             answered = false;
         };
 
@@ -162,38 +139,31 @@
             answered = true;
             const q = quizData[currentQuestion];
             const isCorrect = index === q.correct;
-            
             if (isCorrect) score++;
 
-            // Zapisz głos asynchronicznie, jeśli jesteśmy połączeni
-            if (userAuth) {
+            // Asynchroniczny zapis do Firebase
+            if (userAuth && db) {
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'nask-quiz-v1';
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', q.id);
                 getDoc(docRef).then(snap => {
-                    if (!snap.exists()) {
-                        setDoc(docRef, { counts: [0, 0, 0, 0] }).then(() => updateVote(docRef, index));
-                    } else {
-                        updateVote(docRef, index);
-                    }
+                    if (!snap.exists()) setDoc(docRef, { counts: [0, 0, 0, 0] }).then(() => updateVote(docRef, index));
+                    else updateVote(docRef, index);
                 }).catch(() => {});
             }
 
-            // UI feedback natychmiastowy
             document.querySelectorAll('.option-btn').forEach((b, i) => {
                 b.disabled = true;
-                if (i === q.correct) {
-                    b.classList.replace('border-slate-200', 'border-green-500');
-                    b.classList.add('bg-green-50', 'text-green-700');
-                } else if (i === index && !isCorrect) {
-                    b.classList.replace('border-slate-200', 'border-red-500');
-                    b.classList.add('bg-red-50', 'text-red-700');
-                }
+                if (i === q.correct) b.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+                else if (i === index && !isCorrect) b.classList.add('border-red-500', 'bg-red-50', 'text-red-700');
             });
 
             const fBox = document.getElementById('feedback');
             const fText = document.getElementById('feedback-text');
-            fBox.className = `mt-8 p-6 rounded-xl border-2 ${isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`;
-            fText.innerHTML = `<span class="block text-lg font-bold mb-1">${isCorrect ? 'Doskonale!' : 'Nie tym razem...'}</span>${q.rationale}`;
-            fBox.classList.remove('hidden');
+            if (fBox && fText) {
+                fBox.className = `mt-8 p-6 rounded-xl border-2 ${isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`;
+                fText.innerHTML = `<span class="block text-lg font-bold mb-1">${isCorrect ? 'Doskonale!' : 'Nie tym razem...'}</span>${q.rationale}`;
+                fBox.classList.remove('hidden');
+            }
         };
 
         const updateVote = (ref, idx) => {
@@ -202,41 +172,26 @@
             updateDoc(ref, data).catch(() => {});
         };
 
-        const toggleStats = () => {
-            const q = document.getElementById('quiz-container');
-            const s = document.getElementById('stats-area');
-            const btn = document.getElementById('admin-toggle');
-
-            if (s.classList.contains('hidden')) {
-                q.classList.add('hidden');
-                s.classList.remove('hidden');
-                btn.innerText = "Zamknij";
-                loadStats();
-            } else {
-                q.classList.remove('hidden');
-                s.classList.add('hidden');
-                btn.innerText = "Statystyki";
-                if (statsUnsubscribe) statsUnsubscribe();
-            }
-        };
-
         const loadStats = () => {
             const q = quizData[currentQuestion];
             const container = document.getElementById('stats-container');
+            if (!container) return;
+            
             container.innerHTML = '<p class="text-center py-10 text-slate-400 animate-pulse font-medium">Synchronizacja wyników grupy...</p>';
 
-            if (!userAuth) {
-                container.innerHTML = '<p class="text-center py-10 text-slate-500">Statystyki niedostępne w trybie offline.</p>';
+            if (!userAuth || !db) {
+                container.innerHTML = '<p class="text-center py-10 text-slate-500">Statystyki niedostępne (tryb offline).</p>';
                 return;
             }
 
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'nask-quiz-v1';
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', q.id);
+            
             statsUnsubscribe = onSnapshot(docRef, (doc) => {
                 if (doc.exists()) {
                     const counts = doc.data().counts;
                     const total = counts.reduce((a, b) => a + b, 0) || 1;
                     container.innerHTML = '';
-                    
                     q.options.forEach((opt, i) => {
                         const pct = Math.round((counts[i] / total) * 100);
                         const isCorrect = i === q.correct;
@@ -253,18 +208,48 @@
                         container.appendChild(row);
                     });
                 } else {
-                    container.innerHTML = '<p class="text-center py-10 text-slate-400">Poczekaj na pierwszy głos...</p>';
+                    container.innerHTML = '<p class="text-center py-10 text-slate-400">Brak głosów dla tego pytania.</p>';
                 }
-            }, (err) => {
-                container.innerHTML = '<p class="text-center py-10 text-red-400">Błąd połączenia z bazą.</p>';
+            }, () => {
+                container.innerHTML = '<p class="text-center py-10 text-red-400">Błąd ładowania statystyk.</p>';
             });
         };
 
+        // Inicjalizacja
+        const startApp = () => {
+            document.getElementById('app').classList.add('visible');
+            
+            // 1. QR Code (Zawsze)
+            try {
+                new QRCode(document.getElementById("qr-code"), {
+                    text: githubUrl,
+                    width: 140,
+                    height: 140,
+                    colorDark : "#4338ca",
+                    colorLight : "#f8fafc"
+                });
+            } catch(e) { console.error("QR Error", e); }
+
+            // 2. Quiz (Zawsze)
+            showQuestion();
+
+            // 3. Firebase (W tle)
+            try {
+                if (typeof __firebase_config !== 'undefined') {
+                    const config = JSON.parse(__firebase_config);
+                    const app = initializeApp(config);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    signInAnonymously(auth).then(res => userAuth = res.user).catch(() => {});
+                }
+            } catch(e) { console.warn("Firebase Config Error", e); }
+        };
+
+        // Handlery przycisków
         document.getElementById('next-btn').onclick = () => {
             currentQuestion++;
-            if (currentQuestion < quizData.length) {
-                showQuestion();
-            } else {
+            if (currentQuestion < quizData.length) showQuestion();
+            else {
                 document.getElementById('quiz-container').classList.add('hidden');
                 document.getElementById('stats-area').classList.add('hidden');
                 document.getElementById('results-area').classList.remove('hidden');
@@ -272,8 +257,32 @@
             }
         };
 
+        const toggleStats = () => {
+            const qC = document.getElementById('quiz-container');
+            const sA = document.getElementById('stats-area');
+            const btn = document.getElementById('admin-toggle');
+            if (sA.classList.contains('hidden')) {
+                qC.classList.add('hidden');
+                sA.classList.remove('hidden');
+                btn.innerText = "Zamknij";
+                loadStats();
+            } else {
+                qC.classList.remove('hidden');
+                sA.classList.add('hidden');
+                btn.innerText = "Statystyki";
+                if (statsUnsubscribe) statsUnsubscribe();
+            }
+        };
+
         document.getElementById('admin-toggle').onclick = toggleStats;
         document.getElementById('back-to-quiz').onclick = toggleStats;
+
+        // Start
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', startApp);
+        } else {
+            startApp();
+        }
     </script>
 </body>
 </html>
