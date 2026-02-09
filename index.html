@@ -89,7 +89,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, doc, setDoc, updateDoc, increment, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
@@ -115,6 +115,7 @@
         let score = 0;
         let answered = false;
         let statsUnsubscribe = null;
+        let currentUser = null;
 
         // Inicjalizacja kodu QR
         const generateQR = () => {
@@ -130,11 +131,27 @@
             });
         };
 
+        // Poprawiona autoryzacja - czekamy na zakończenie logowania przed operacjami na DB
         const initAuth = async () => {
-            await signInAnonymously(auth);
+            return new Promise((resolve) => {
+                onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                    if (user) resolve(user);
+                });
+
+                const performSignIn = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token).catch(console.error);
+                    } else {
+                        await signInAnonymously(auth).catch(console.error);
+                    }
+                };
+                performSignIn();
+            });
         };
 
         const saveVote = async (questionId, optionIndex) => {
+            if (!currentUser) await initAuth(); // Guard: upewnij się, że jesteśmy zalogowani
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', questionId);
             try {
                 const snap = await getDoc(docRef);
@@ -194,7 +211,7 @@
             feedback.classList.remove('hidden');
         };
 
-        const toggleStats = () => {
+        const toggleStats = async () => {
             const quizContainer = document.getElementById('quiz-container');
             const statsArea = document.getElementById('stats-area');
             const sidebarQr = document.getElementById('sidebar-qr');
@@ -205,7 +222,7 @@
                 statsArea.classList.remove('hidden');
                 sidebarQr.classList.remove('hidden');
                 document.getElementById('admin-toggle').innerText = "Widok Pytań";
-                startStatsSync();
+                await startStatsSync();
             } else {
                 quizContainer.classList.remove('hidden');
                 statsArea.classList.add('hidden');
@@ -215,7 +232,8 @@
             }
         };
 
-        const startStatsSync = () => {
+        const startStatsSync = async () => {
+            if (!currentUser) await initAuth(); // Guard
             const q = quizData[currentQuestion];
             document.getElementById('stats-title').innerText = `Wyniki dla: ${q.question}`;
             
@@ -226,7 +244,7 @@
                 } else {
                     renderBars([0,0,0,0], q.options, q.correct);
                 }
-            }, (err) => console.error(err));
+            }, (err) => console.error("Stats subscription error:", err));
         };
 
         const renderBars = (counts, options, correctIdx) => {
@@ -274,9 +292,10 @@
         document.getElementById('admin-toggle').onclick = toggleStats;
         document.getElementById('back-to-quiz').onclick = toggleStats;
 
-        window.onload = () => {
+        window.onload = async () => {
             generateQR();
-            initAuth().then(showQuestion);
+            await initAuth();
+            showQuestion();
         };
     </script>
 </body>
