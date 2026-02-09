@@ -14,75 +14,109 @@
         .bar-transition { transition: width 0.8s ease-out; }
         #app { opacity: 0; transition: opacity 0.3s ease-in; }
         #app.visible { opacity: 1; }
+        
+        /* Animacja słupków jak w Kahoot */
+        .stat-bar {
+            height: 40px;
+            border-radius: 8px;
+            transition: width 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen p-4">
+<body class="bg-slate-900 min-h-screen p-2 md:p-6 flex items-center justify-center">
 
-    <div id="app" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
+    <div id="app" class="w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden min-h-[600px] flex flex-col">
         <!-- Header -->
-        <div class="bg-indigo-700 p-6 text-white text-center relative">
-            <h1 class="text-2xl font-bold">Nastolatki 3.0: Quiz Live</h1>
-            <p class="text-indigo-200 text-sm">Sprawdź wyniki i zobacz, jak odpowiadają inni</p>
-            <button id="admin-toggle" class="absolute top-4 right-4 text-[10px] uppercase tracking-widest bg-indigo-800 hover:bg-black px-3 py-1 rounded-full transition-colors">
-                Statystyki
+        <div class="bg-indigo-600 p-6 text-white flex justify-between items-center">
+            <div>
+                <h1 class="text-xl md:text-2xl font-black tracking-tight">QUIZ LIVE: NASTOLATKI 3.0</h1>
+                <p class="text-indigo-100 text-xs opacity-80">Wspólne badanie wiedzy w czasie rzeczywistym</p>
+            </div>
+            <button id="admin-toggle" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl text-sm font-bold transition-all">
+                Panel Wyników
             </button>
         </div>
 
-        <div class="flex flex-col md:flex-row">
-            <!-- Main Content -->
+        <div class="flex flex-col lg:flex-row flex-grow">
+            <!-- Lewa strona: Quiz lub Statystyki -->
             <div id="main-content" class="flex-grow p-6 md:p-10 border-r border-slate-100">
                 
-                <!-- Quiz -->
+                <!-- QUIZ INTERFEJS -->
                 <div id="quiz-container">
-                    <div class="flex justify-between items-center mb-6">
-                        <span id="question-number" class="text-indigo-600 font-bold uppercase text-xs tracking-widest">Pytanie 1 / 10</span>
-                        <div class="w-32 bg-slate-200 h-2 rounded-full overflow-hidden">
-                            <div id="progress-fill" class="bg-indigo-500 h-full transition-all duration-500" style="width: 10%"></div>
+                    <div class="flex justify-between items-center mb-8">
+                        <span id="question-number" class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full font-bold text-xs">Pytanie 1 / 10</span>
+                        <div class="flex items-center gap-2">
+                            <div class="w-32 bg-slate-100 h-2 rounded-full overflow-hidden">
+                                <div id="progress-fill" class="bg-indigo-500 h-full transition-all duration-500" style="width: 10%"></div>
+                            </div>
                         </div>
                     </div>
 
-                    <h2 id="question-text" class="text-xl font-bold text-slate-800 mb-8 leading-snug">Ładowanie pytania...</h2>
+                    <h2 id="question-text" class="text-2xl md:text-3xl font-extrabold text-slate-800 mb-10 leading-tight">Ładowanie...</h2>
                     
-                    <div id="options-grid" class="grid gap-4"></div>
+                    <div id="options-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Przyciski generowane przez JS -->
+                    </div>
 
-                    <div id="feedback" class="mt-8 p-6 rounded-xl hidden border-2">
-                        <p id="feedback-text" class="text-sm font-medium mb-4"></p>
-                        <button id="next-btn" class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-transform active:scale-95">
-                            Dalej
+                    <div id="feedback" class="mt-8 p-6 rounded-2xl hidden border-l-8 transition-all">
+                        <p id="feedback-text" class="text-slate-700"></p>
+                        <button id="next-btn" class="mt-6 w-full bg-slate-900 text-white py-4 rounded-xl font-black hover:bg-indigo-600 transition-all uppercase tracking-widest shadow-lg">
+                            Następne pytanie
                         </button>
                     </div>
                 </div>
 
-                <!-- Stats View -->
+                <!-- PANEL WYNIKÓW (LIVE STATS) -->
                 <div id="stats-area" class="hidden">
-                    <h2 class="text-xl font-bold text-slate-800 mb-6">Wyniki grupy (na żywo)</h2>
-                    <div id="stats-container" class="space-y-6"></div>
-                    <button id="back-to-quiz" class="mt-10 w-full py-3 text-slate-500 font-semibold hover:text-indigo-600">
-                        ← Powrót do pytań
+                    <div class="flex items-center justify-between mb-8">
+                        <h2 class="text-2xl font-black text-slate-800">Jak odpowiada grupa?</h2>
+                        <span class="flex items-center gap-2 text-red-500 font-bold animate-pulse text-sm">
+                            <span class="w-2 h-2 bg-red-500 rounded-full"></span> NA ŻYWO
+                        </span>
+                    </div>
+                    
+                    <div id="stats-container" class="space-y-8">
+                        <!-- Słupki generowane przez JS -->
+                    </div>
+
+                    <div class="mt-12 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-2">Ciekawostka / Uzasadnienie:</h3>
+                        <p id="stats-rationale" class="text-slate-600 italic"></p>
+                    </div>
+
+                    <button id="back-to-quiz" class="mt-8 text-slate-400 font-bold hover:text-indigo-600 transition-colors uppercase text-xs tracking-widest">
+                        Powrót do Twoich odpowiedzi
                     </button>
                 </div>
 
-                <!-- End Screen -->
-                <div id="results-area" class="hidden text-center py-10">
-                    <div class="text-6xl mb-4">🏆</div>
-                    <h2 class="text-3xl font-bold text-slate-800 mb-2">Gratulacje!</h2>
-                    <p class="text-slate-500 mb-8">Twój wynik: <span id="final-score" class="font-bold text-indigo-600 text-2xl"></span></p>
-                    <button onclick="location.reload()" class="bg-indigo-600 text-white px-10 py-4 rounded-xl font-bold shadow-lg shadow-indigo-200">
-                        Zagraj jeszcze raz
+                <!-- EKRAN KOŃCOWY -->
+                <div id="results-area" class="hidden text-center py-20">
+                    <div class="text-8xl mb-6">🎯</div>
+                    <h2 class="text-4xl font-black text-slate-800 mb-2">Koniec Quizu!</h2>
+                    <p class="text-slate-500 text-lg mb-10">Twój wynik to <span id="final-score" class="text-indigo-600 font-black"></span></p>
+                    <button onclick="location.reload()" class="bg-indigo-600 text-white px-12 py-5 rounded-2xl font-black shadow-2xl hover:scale-105 transition-transform uppercase tracking-wider">
+                        Zacznij od nowa
                     </button>
                 </div>
             </div>
 
-            <!-- Sidebar QR -->
-            <div class="w-full md:w-72 bg-slate-50 p-8 flex flex-col items-center justify-center text-center">
-                <p class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-[0.2em]">Dołącz do nas</p>
-                <div id="qr-code" class="bg-white p-2 rounded-lg shadow-md mb-6 min-h-[140px] flex items-center justify-center"></div>
-                <p class="text-[11px] text-slate-400 leading-relaxed max-w-[180px]">Zeskanuj kod, aby otworzyć quiz na swoim telefonie</p>
+            <!-- Prawa strona: QR Code (Dołączanie) -->
+            <div id="qr-sidebar" class="w-full lg:w-80 bg-slate-50 p-10 flex flex-col items-center justify-center text-center">
+                <div class="mb-6">
+                    <p class="text-[10px] font-black text-indigo-400 uppercase tracking-[0.3em] mb-2">Zeskanuj i dołącz</p>
+                    <div id="qr-code" class="bg-white p-4 rounded-3xl shadow-xl inline-block border-4 border-white"></div>
+                </div>
+                <h3 class="font-black text-slate-800 text-lg mb-2">Głosuj telefonem</h3>
+                <p class="text-sm text-slate-500 leading-relaxed">Każdy głos aktualizuje wykres po lewej stronie w czasie rzeczywistym.</p>
+                
+                <div class="mt-8 pt-8 border-t border-slate-200 w-full">
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-widest">Wspierane przez</p>
+                    <p class="text-sm font-black text-slate-600">NASK - Nastolatki 3.0</p>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, doc, setDoc, updateDoc, increment, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
@@ -91,14 +125,14 @@
         const quizData = [
             { id: "q1", question: "W jakim wieku przeciętny polski nastolatek otrzymuje pierwszy smartfon z internetem?", options: ["7–8 lat", "9–10 lat", "11–12 lat", "Powyżej 13 lat"], correct: 1, rationale: "41% dzieci otrzymuje pierwszy telefon w wieku 9-10 lat." },
             { id: "q2", question: "Ile czasu średnio spędza polski nastolatek w internecie w dni powszednie?", options: ["Ok. 2h", "Ok. 3,5h", "Ok. 5h", "Ponad 8h"], correct: 2, rationale: "Średnia to 4h 59min. Rodzice często sądzą, że to znacznie mniej." },
-            { id: "q3", question: "Jaki procent rodziców uważa, że ustala zasady (a ile dzieci to potwierdza)?", options: ["90% / 85%", "57% / 21%", "30% / 30%", "20% / 60%"], correct: 1, rationale: "Istnieje ogromna różnica w postrzeganiu kontroli między rodzicami a dziećmi." },
-            { id: "q4", question: "Jaki procent uczniów zaniedbuje obowiązki szkolne przez social media?", options: ["5%", "15%", "Ok. 30%", "70%"], correct: 2, rationale: "Ok. 34% dziewcząt i 29% chłopców przyznaje się do zaniedbań." },
+            { id: "q3", question: "Jaki procent rodziców uważa, że ustala zasady (a ile dzieci to potwierdza)?", options: ["90% / 85%", "57% / 21%", "30% / 30%", "20% / 60%"], correct: 1, rationale: "Ogromna rozbieżność: 57% rodziców twierdzi, że kontroluje czas, ale tylko 21% dzieci to potwierdza." },
+            { id: "q4", question: "Jaki procent uczniów zaniedbuje obowiązki szkolne przez social media?", options: ["5%", "15%", "Ok. 30%", "70%"], correct: 2, rationale: "Prawie 1/3 uczniów przyznaje, że internet odciąga ich od nauki." },
             { id: "q5", question: "Ilu nastolatków doświadczyło cyberprzemocy (wyzywanie/ośmieszanie)?", options: ["Mniej niż 10%", "Ponad połowa", "Ok. 30-40%", "Blisko 90%"], correct: 2, rationale: "Tylko 44% nigdy nie doświadczyło agresji; reszta spotkała się z nią w różnej formie." },
             { id: "q6", question: "Ilu nastolatków spotkało się na żywo z dorosłym poznanym tylko w sieci?", options: ["Ok. 1%", "Ok. 11%", "Ok. 25%", "Ponad 40%"], correct: 1, rationale: "Co dziewiąty uczeń decyduje się na takie ryzykowne spotkanie." },
-            { id: "q7", question: "Jaka jest skala otrzymywania intymnych zdjęć (sekstingu) przez uczniów?", options: ["2%", "10%", "Ok. 28%", "60%"], correct: 2, rationale: "Niemal co trzeci uczeń otrzymał takie treści." },
-            { id: "q8", question: "Średni wiek pierwszego kontaktu z pornografią?", options: ["9 lat", "11 lat", "14 lat", "16 lat"], correct: 1, rationale: "Średnia to 11 lat i 3 miesiące." },
-            { id: "q9", question: "Co najbardziej niepokoi nastolatków w kontekście AI?", options: ["Trudność obsługi", "Brak dostępu", "Zagrożenie dla zawodu", "Etyka"], correct: 2, rationale: "34% boi się utraty pracy w przyszłości." },
-            { id: "q10", question: "Ilu uczniów szkół średnich czuje potrzebę ograniczenia czasu z telefonem?", options: ["10%", "25%", "Ponad 50%", "90%"], correct: 2, rationale: "56% uczniów widzi u siebie problem nadużywania smartfona." }
+            { id: "q7", question: "Jaka jest skala sekstingu (otrzymywania intymnych zdjęć) wśród uczniów?", options: ["2%", "10%", "Ok. 28%", "60%"], correct: 2, rationale: "Niemal co trzeci uczeń otrzymał kiedykolwiek takie treści." },
+            { id: "q8", question: "Średni wiek pierwszego kontaktu z pornografią?", options: ["9 lat", "11 lat", "14 lat", "16 lat"], correct: 1, rationale: "Średni wiek to zaledwie 11 lat i 3 miesiące." },
+            { id: "q9", question: "Co najbardziej niepokoi nastolatków w kontekście AI?", options: ["Trudność obsługi", "Brak dostępu", "Zagrożenie dla zawodu", "Etyka"], correct: 2, rationale: "34% boi się, że AI odbierze im pracę w przyszłości." },
+            { id: "q10", question: "Ilu uczniów czuje potrzebę ograniczenia czasu z telefonem?", options: ["10%", "25%", "Ponad 50%", "90%"], correct: 2, rationale: "Aż 56% uczniów widzi u siebie problem nadużywania smartfona." }
         ];
 
         const githubUrl = "https://mpajaczkowskilekcje-design.github.io/cyberbezpieczenstwo_dla_pedagogow/";
@@ -106,31 +140,43 @@
         let score = 0;
         let answered = false;
         let statsUnsubscribe = null;
-        let userAuth = null;
-        let db, auth;
+        let db, auth, userAuth;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'nask-kahoot-live-v1';
+
+        const initFirebase = async () => {
+            try {
+                if (typeof __firebase_config !== 'undefined') {
+                    const config = JSON.parse(__firebase_config);
+                    const app = initializeApp(config);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+                    const res = await signInAnonymously(auth);
+                    userAuth = res.user;
+                }
+            } catch(e) { console.error("Firebase fail", e); }
+        };
 
         const showQuestion = () => {
             const q = quizData[currentQuestion];
-            const qNum = document.getElementById('question-number');
-            const qText = document.getElementById('question-text');
-            const pFill = document.getElementById('progress-fill');
+            document.getElementById('question-number').innerText = `Pytanie ${currentQuestion + 1} / ${quizData.length}`;
+            document.getElementById('question-text').innerText = q.question;
+            document.getElementById('progress-fill').style.width = `${((currentQuestion + 1) / quizData.length) * 100}%`;
+            
             const grid = document.getElementById('options-grid');
+            grid.innerHTML = '';
             
-            if (qNum) qNum.innerText = `Pytanie ${currentQuestion + 1} / ${quizData.length}`;
-            if (qText) qText.innerText = q.question;
-            if (pFill) pFill.style.width = `${((currentQuestion + 1) / quizData.length) * 100}%`;
-            
-            if (grid) {
-                grid.innerHTML = '';
-                q.options.forEach((opt, i) => {
-                    const btn = document.createElement('button');
-                    btn.className = "option-btn text-left p-5 border-2 border-slate-200 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition-all font-medium text-slate-700 shadow-sm";
-                    btn.innerText = opt;
-                    btn.onclick = () => handleAnswer(i, btn);
-                    grid.appendChild(btn);
-                });
-            }
-            document.getElementById('feedback')?.classList.add('hidden');
+            q.options.forEach((opt, i) => {
+                const btn = document.createElement('button');
+                const colors = ['bg-rose-500', 'bg-blue-500', 'bg-amber-500', 'bg-emerald-500'];
+                btn.className = `option-btn group relative flex items-center p-6 rounded-2xl border-b-4 border-black/20 text-white font-bold text-lg transition-all active:translate-y-1 active:border-b-0 hover:brightness-110 ${colors[i]}`;
+                btn.innerHTML = `
+                    <span class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center mr-4 group-hover:scale-110 transition-transform">${i+1}</span>
+                    <span class="text-left">${opt}</span>
+                `;
+                btn.onclick = () => handleAnswer(i, btn);
+                grid.appendChild(btn);
+            });
+            document.getElementById('feedback').classList.add('hidden');
             answered = false;
         };
 
@@ -141,9 +187,8 @@
             const isCorrect = index === q.correct;
             if (isCorrect) score++;
 
-            // Asynchroniczny zapis do Firebase
+            // Zapisz głos w bazie
             if (userAuth && db) {
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'nask-quiz-v1';
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', q.id);
                 getDoc(docRef).then(snap => {
                     if (!snap.exists()) setDoc(docRef, { counts: [0, 0, 0, 0] }).then(() => updateVote(docRef, index));
@@ -151,19 +196,21 @@
                 }).catch(() => {});
             }
 
+            // UI Feedback
             document.querySelectorAll('.option-btn').forEach((b, i) => {
                 b.disabled = true;
-                if (i === q.correct) b.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
-                else if (i === index && !isCorrect) b.classList.add('border-red-500', 'bg-red-50', 'text-red-700');
+                if (i !== index) b.style.opacity = "0.3";
+                if (i === q.correct) {
+                    b.style.opacity = "1";
+                    b.classList.add('ring-4', 'ring-white');
+                }
             });
 
             const fBox = document.getElementById('feedback');
             const fText = document.getElementById('feedback-text');
-            if (fBox && fText) {
-                fBox.className = `mt-8 p-6 rounded-xl border-2 ${isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`;
-                fText.innerHTML = `<span class="block text-lg font-bold mb-1">${isCorrect ? 'Doskonale!' : 'Nie tym razem...'}</span>${q.rationale}`;
-                fBox.classList.remove('hidden');
-            }
+            fBox.className = `mt-8 p-6 rounded-2xl border-l-8 hidden ${isCorrect ? 'bg-green-100 border-green-500' : 'bg-red-100 border-red-500'}`;
+            fText.innerHTML = `<b class="text-xl block mb-2">${isCorrect ? '✓ Świetnie!' : '✗ Błąd'}</b> ${q.rationale}`;
+            fBox.classList.remove('hidden');
         };
 
         const updateVote = (ref, idx) => {
@@ -175,77 +222,80 @@
         const loadStats = () => {
             const q = quizData[currentQuestion];
             const container = document.getElementById('stats-container');
-            if (!container) return;
+            const rationaleText = document.getElementById('stats-rationale');
+            rationaleText.innerText = q.rationale;
             
-            container.innerHTML = '<p class="text-center py-10 text-slate-400 animate-pulse font-medium">Synchronizacja wyników grupy...</p>';
+            container.innerHTML = '<div class="text-center py-10 text-slate-400">Łączenie z wynikami grupy...</div>';
 
-            if (!userAuth || !db) {
-                container.innerHTML = '<p class="text-center py-10 text-slate-500">Statystyki niedostępne (tryb offline).</p>';
-                return;
-            }
+            if (!db) return;
 
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'nask-quiz-v1';
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', q.id);
-            
             statsUnsubscribe = onSnapshot(docRef, (doc) => {
                 if (doc.exists()) {
                     const counts = doc.data().counts;
                     const total = counts.reduce((a, b) => a + b, 0) || 1;
                     container.innerHTML = '';
+                    
+                    const colors = ['bg-rose-500', 'bg-blue-500', 'bg-amber-500', 'bg-emerald-500'];
                     q.options.forEach((opt, i) => {
                         const pct = Math.round((counts[i] / total) * 100);
                         const isCorrect = i === q.correct;
                         const row = document.createElement('div');
+                        row.className = "relative";
                         row.innerHTML = `
-                            <div class="flex justify-between text-sm mb-2">
-                                <span class="${isCorrect ? 'font-bold text-green-600' : 'text-slate-600'}">${opt} ${isCorrect ? '✓' : ''}</span>
-                                <span class="font-bold">${pct}%</span>
+                            <div class="flex justify-between items-end mb-2">
+                                <span class="font-bold text-slate-700 text-sm ${isCorrect ? 'text-green-600' : ''}">
+                                    ${isCorrect ? '★ ' : ''}${opt}
+                                </span>
+                                <span class="text-xs font-black text-slate-400">${counts[i]} głosy</span>
                             </div>
-                            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                                <div class="bar-transition h-full ${isCorrect ? 'bg-green-500' : 'bg-indigo-400'} rounded-full" style="width: ${pct}%"></div>
+                            <div class="w-full bg-slate-100 h-10 rounded-xl overflow-hidden flex items-center pr-4">
+                                <div class="stat-bar ${colors[i]} flex items-center justify-end pr-4 text-white font-black text-sm" style="width: ${pct}%">
+                                    ${pct > 10 ? pct + '%' : ''}
+                                </div>
+                                ${pct <= 10 ? `<span class="ml-2 font-black text-slate-400 text-xs">${pct}%</span>` : ''}
                             </div>
                         `;
                         container.appendChild(row);
                     });
                 } else {
-                    container.innerHTML = '<p class="text-center py-10 text-slate-400">Brak głosów dla tego pytania.</p>';
+                    container.innerHTML = '<div class="text-center py-20 text-slate-300 font-bold uppercase tracking-widest italic">Czekam na pierwszy głos...</div>';
                 }
-            }, () => {
-                container.innerHTML = '<p class="text-center py-10 text-red-400">Błąd ładowania statystyk.</p>';
             });
         };
 
-        // Inicjalizacja
-        const startApp = () => {
-            document.getElementById('app').classList.add('visible');
-            
-            // 1. QR Code (Zawsze)
-            try {
-                new QRCode(document.getElementById("qr-code"), {
-                    text: githubUrl,
-                    width: 140,
-                    height: 140,
-                    colorDark : "#4338ca",
-                    colorLight : "#f8fafc"
-                });
-            } catch(e) { console.error("QR Error", e); }
+        const toggleStats = () => {
+            const qC = document.getElementById('quiz-container');
+            const sA = document.getElementById('stats-area');
+            const btn = document.getElementById('admin-toggle');
+            const qr = document.getElementById('qr-sidebar');
 
-            // 2. Quiz (Zawsze)
-            showQuestion();
-
-            // 3. Firebase (W tle)
-            try {
-                if (typeof __firebase_config !== 'undefined') {
-                    const config = JSON.parse(__firebase_config);
-                    const app = initializeApp(config);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                    signInAnonymously(auth).then(res => userAuth = res.user).catch(() => {});
-                }
-            } catch(e) { console.warn("Firebase Config Error", e); }
+            if (sA.classList.contains('hidden')) {
+                qC.classList.add('hidden');
+                sA.classList.remove('hidden');
+                btn.innerText = "Mój Quiz";
+                loadStats();
+            } else {
+                qC.classList.remove('hidden');
+                sA.classList.add('hidden');
+                btn.innerText = "Panel Wyników";
+                if (statsUnsubscribe) statsUnsubscribe();
+            }
         };
 
-        // Handlery przycisków
+        const startApp = async () => {
+            document.getElementById('app').classList.add('visible');
+            new QRCode(document.getElementById("qr-code"), {
+                text: githubUrl,
+                width: 160,
+                height: 160,
+                colorDark : "#4f46e5",
+                colorLight : "#f8fafc"
+            });
+            showQuestion();
+            await initFirebase();
+        };
+
         document.getElementById('next-btn').onclick = () => {
             currentQuestion++;
             if (currentQuestion < quizData.length) showQuestion();
@@ -257,32 +307,10 @@
             }
         };
 
-        const toggleStats = () => {
-            const qC = document.getElementById('quiz-container');
-            const sA = document.getElementById('stats-area');
-            const btn = document.getElementById('admin-toggle');
-            if (sA.classList.contains('hidden')) {
-                qC.classList.add('hidden');
-                sA.classList.remove('hidden');
-                btn.innerText = "Zamknij";
-                loadStats();
-            } else {
-                qC.classList.remove('hidden');
-                sA.classList.add('hidden');
-                btn.innerText = "Statystyki";
-                if (statsUnsubscribe) statsUnsubscribe();
-            }
-        };
-
         document.getElementById('admin-toggle').onclick = toggleStats;
         document.getElementById('back-to-quiz').onclick = toggleStats;
 
-        // Start
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', startApp);
-        } else {
-            startApp();
-        }
+        startApp();
     </script>
 </body>
 </html>
