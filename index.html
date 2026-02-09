@@ -3,111 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test Wiedzy: Nastolatki 3.0 - Live</title>
+    <title>Test Wiedzy: Nastolatki 3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Biblioteka do generowania kodów QR -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
-        .bar-transition { transition: width 1s ease-in-out; }
-        #qr-code img { margin: 0 auto; border: 8px solid white; border-radius: 8px; }
-        .loading-overlay {
-            position: fixed;
-            inset: 0;
-            background: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
+        .option-btn:disabled { cursor: not-allowed; opacity: 0.8; }
+        #qr-code img { margin: 0 auto; border: 4px solid white; border-radius: 4px; }
+        .bar-transition { transition: width 0.8s ease-out; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen p-4">
+<body class="bg-slate-100 min-h-screen p-4">
 
-    <!-- Overlay ładowania -->
-    <div id="loading" class="loading-overlay">
-        <div class="text-center p-6">
-            <div id="loading-spinner" class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <p id="loading-text" class="text-slate-600 font-medium">Łączenie z panelem wyników...</p>
-            <button id="retry-btn" class="hidden mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg" onclick="location.reload()">Spróbuj ponownie</button>
-        </div>
-    </div>
-
-    <div id="app" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden mb-8 hidden">
+    <div id="app" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl overflow-hidden">
         <!-- Header -->
-        <div class="bg-indigo-600 p-6 text-white text-center relative">
-            <h1 class="text-xl font-bold">Nastolatki 3.0: Live Quiz</h1>
-            <p id="header-subtitle" class="text-indigo-100 text-sm mt-1">Sprawdź swoją wiedzę i zobacz wyniki grupy</p>
-            <button id="admin-toggle" class="absolute top-4 right-4 text-xs bg-indigo-700 hover:bg-indigo-800 px-3 py-1 rounded-full border border-indigo-400">
-                Panel Sterowania
+        <div class="bg-indigo-700 p-6 text-white text-center relative">
+            <h1 class="text-2xl font-bold">Nastolatki 3.0: Quiz Live</h1>
+            <p class="text-indigo-200 text-sm">Sprawdź wyniki i zobacz, jak odpowiadają inni</p>
+            <button id="admin-toggle" class="absolute top-4 right-4 text-[10px] uppercase tracking-widest bg-indigo-800 hover:bg-black px-3 py-1 rounded-full transition-colors">
+                Statystyki
             </button>
         </div>
 
         <div class="flex flex-col md:flex-row">
-            <!-- Main Content Area -->
-            <div id="main-content" class="flex-grow p-6 border-r border-slate-100">
+            <!-- Main Content -->
+            <div id="main-content" class="flex-grow p-6 md:p-10 border-r border-slate-100">
                 
-                <!-- Quiz Container -->
+                <!-- Quiz -->
                 <div id="quiz-container">
-                    <div id="progress-bar" class="w-full bg-slate-100 h-2 rounded-full mb-6">
-                        <div id="progress-fill" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    <div class="flex justify-between items-center mb-6">
+                        <span id="question-number" class="text-indigo-600 font-bold uppercase text-xs tracking-widest">Pytanie 1 / 10</span>
+                        <div class="w-32 bg-slate-200 h-2 rounded-full overflow-hidden">
+                            <div id="progress-fill" class="bg-indigo-500 h-full transition-all duration-500" style="width: 10%"></div>
+                        </div>
                     </div>
 
-                    <div id="question-area">
-                        <p id="question-number" class="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-2"></p>
-                        <h2 id="question-text" class="text-lg font-bold text-slate-800 mb-6 leading-tight"></h2>
-                        
-                        <div id="options-grid" class="grid gap-3"></div>
+                    <h2 id="question-text" class="text-xl font-bold text-slate-800 mb-8 leading-snug">Ładowanie pytania...</h2>
+                    
+                    <div id="options-grid" class="grid gap-4"></div>
 
-                        <div id="feedback" class="mt-6 p-4 rounded-lg hidden border">
-                            <p id="feedback-text" class="text-sm"></p>
-                            <button id="next-btn" class="mt-4 w-full bg-slate-800 text-white py-3 rounded-xl font-semibold hover:bg-slate-700 transition-colors">
-                                Następne pytanie
-                            </button>
-                        </div>
+                    <div id="feedback" class="mt-8 p-6 rounded-xl hidden border-2">
+                        <p id="feedback-text" class="text-sm font-medium mb-4"></p>
+                        <button id="next-btn" class="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-transform active:scale-95">
+                            Dalej
+                        </button>
                     </div>
                 </div>
 
-                <!-- Admin / Stats Area -->
+                <!-- Stats View -->
                 <div id="stats-area" class="hidden">
-                    <h2 id="stats-title" class="text-lg font-bold text-slate-800 mb-4">Wyniki grupy w czasie rzeczywistym</h2>
-                    <div id="stats-container" class="space-y-6">
-                        <!-- Bars will be injected here -->
-                    </div>
-                    <button id="back-to-quiz" class="mt-8 w-full border-2 border-slate-200 text-slate-600 py-3 rounded-xl font-semibold hover:bg-slate-50">
-                        Powrót do pytań
+                    <h2 class="text-xl font-bold text-slate-800 mb-6">Wyniki grupy (na żywo)</h2>
+                    <div id="stats-container" class="space-y-6"></div>
+                    <button id="back-to-quiz" class="mt-10 w-full py-3 text-slate-500 font-semibold hover:text-indigo-600">
+                        ← Powrót do pytań
                     </button>
                 </div>
 
-                <!-- Results Area -->
-                <div id="results-area" class="p-8 text-center hidden">
-                    <div class="mb-6">
-                        <span id="score-circle" class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-indigo-100 text-indigo-600 text-3xl font-bold"></span>
-                    </div>
-                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Koniec testu!</h2>
-                    <p id="result-comment" class="text-slate-600 mb-8"></p>
-                    <button onclick="location.reload()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-indigo-700">
-                        Zacznij od nowa
+                <!-- End Screen -->
+                <div id="results-area" class="hidden text-center py-10">
+                    <div class="text-6xl mb-4">🏆</div>
+                    <h2 class="text-3xl font-bold text-slate-800 mb-2">Gratulacje!</h2>
+                    <p class="text-slate-500 mb-8">Twój wynik: <span id="final-score" class="font-bold text-indigo-600 text-2xl"></span></p>
+                    <button onclick="location.reload()" class="bg-indigo-600 text-white px-10 py-4 rounded-xl font-bold shadow-lg shadow-indigo-200">
+                        Zagraj jeszcze raz
                     </button>
                 </div>
             </div>
 
-            <!-- Sidebar with QR Code -->
-            <div id="sidebar-qr" class="hidden md:flex w-full md:w-64 bg-slate-50 p-6 flex-col items-center justify-center border-l border-slate-100 text-center">
-                <p class="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">Dołącz do głosowania</p>
-                <div id="qr-code" class="mb-4 shadow-sm"></div>
-                <p class="text-[10px] text-slate-400 break-all px-2">mpajaczkowskilekcje-design.github.io/cyberbezpieczenstwo_dla_pedagogow/</p>
+            <!-- Sidebar QR -->
+            <div class="w-full md:w-72 bg-slate-50 p-8 flex flex-col items-center justify-center text-center">
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-[0.2em]">Dołącz do nas</p>
+                <div id="qr-code" class="bg-white p-2 rounded-lg shadow-md mb-6"></div>
+                <p class="text-[11px] text-slate-400 leading-relaxed max-w-[180px]">Zeskanuj kod, aby otworzyć quiz na swoim telefonie</p>
             </div>
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
+    <!-- Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, doc, setDoc, updateDoc, increment, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
         const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
@@ -133,89 +110,35 @@
         let score = 0;
         let answered = false;
         let statsUnsubscribe = null;
-        let currentUser = null;
-        let appStarted = false;
+        let userAuth = null;
 
-        // Inicjalizacja kodu QR
-        const generateQR = () => {
-            const qrContainer = document.getElementById("qr-code");
-            if (!qrContainer) return;
-            qrContainer.innerHTML = "";
-            new QRCode(qrContainer, {
+        const init = async () => {
+            // Kod QR generujemy natychmiast, bez czekania na nic
+            new QRCode(document.getElementById("qr-code"), {
                 text: githubUrl,
-                width: 160,
-                height: 160,
-                colorDark : "#4f46e5",
-                colorLight : "#f8fafc",
-                correctLevel : QRCode.CorrectLevel.H
+                width: 140,
+                height: 140,
+                colorDark : "#4338ca",
+                colorLight : "#f8fafc"
             });
-        };
 
-        const startApp = () => {
-            if (appStarted) return;
-            appStarted = true;
-            document.getElementById('loading').classList.add('hidden');
-            document.getElementById('app').classList.remove('hidden');
-            generateQR();
+            // Logowanie w tle - jeśli się uda, będziemy mieć statystyki
+            signInAnonymously(auth).then(res => userAuth = res.user).catch(e => console.warn("Statystyki wyłączone (tryb offline)"));
+            
             showQuestion();
-        };
-
-        const initAuth = async () => {
-            // Rezerwowy timer - jeśli logowanie zawiedzie, spróbuj pokazać quiz bez statystyk po 5s
-            const timeout = setTimeout(() => {
-                if (!currentUser) {
-                    console.warn("Auth timeout - starting limited mode");
-                    startApp();
-                }
-            }, 5000);
-
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    currentUser = user;
-                    clearTimeout(timeout);
-                    startApp();
-                }
-            });
-
-            try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (err) {
-                console.error("Firebase Auth Error:", err);
-                document.getElementById('loading-text').innerText = "Błąd autoryzacji. Sprawdź połączenie.";
-                document.getElementById('loading-spinner').classList.add('hidden');
-                document.getElementById('retry-btn').classList.remove('hidden');
-            }
-        };
-
-        const saveVote = async (questionId, optionIndex) => {
-            if (!currentUser) return;
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', questionId);
-            try {
-                const snap = await getDoc(docRef);
-                if (!snap.exists()) {
-                    await setDoc(docRef, { counts: [0, 0, 0, 0] });
-                }
-                const updateData = {};
-                updateData[`counts.${optionIndex}`] = increment(1);
-                await updateDoc(docRef, updateData);
-            } catch (e) { console.error("Error saving vote", e); }
         };
 
         const showQuestion = () => {
             const q = quizData[currentQuestion];
-            document.getElementById('question-number').innerText = `Pytanie ${currentQuestion + 1} z ${quizData.length}`;
+            document.getElementById('question-number').innerText = `Pytanie ${currentQuestion + 1} / ${quizData.length}`;
             document.getElementById('question-text').innerText = q.question;
-            document.getElementById('progress-fill').style.width = `${(currentQuestion / quizData.length) * 100}%`;
+            document.getElementById('progress-fill').style.width = `${((currentQuestion + 1) / quizData.length) * 100}%`;
             
             const grid = document.getElementById('options-grid');
             grid.innerHTML = '';
             q.options.forEach((opt, i) => {
                 const btn = document.createElement('button');
-                btn.className = "option-btn text-left p-4 border-2 border-slate-200 rounded-xl hover:border-indigo-500 transition-all text-slate-700 font-medium";
+                btn.className = "option-btn text-left p-5 border-2 border-slate-200 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition-all font-medium text-slate-700";
                 btn.innerText = opt;
                 btn.onclick = () => handleAnswer(i, btn);
                 grid.appendChild(btn);
@@ -228,114 +151,104 @@
             if (answered) return;
             answered = true;
             const q = quizData[currentQuestion];
-            const btns = document.querySelectorAll('.option-btn');
+            const isCorrect = index === q.correct;
+            
+            if (isCorrect) score++;
 
-            saveVote(q.id, index);
+            // Zapisz głos jeśli jesteśmy zalogowani
+            if (userAuth) {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', q.id);
+                getDoc(docRef).then(snap => {
+                    if (!snap.exists()) setDoc(docRef, { counts: [0, 0, 0, 0] }).then(() => updateVote(docRef, index));
+                    else updateVote(docRef, index);
+                });
+            }
 
-            btns.forEach((b, i) => {
+            // UI feedback
+            document.querySelectorAll('.option-btn').forEach((b, i) => {
                 b.disabled = true;
                 if (i === q.correct) b.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
+                else if (i === index && !isCorrect) b.classList.add('border-red-500', 'bg-red-50', 'text-red-700');
             });
 
-            const feedback = document.getElementById('feedback');
-            const feedbackText = document.getElementById('feedback-text');
-            if (index === q.correct) {
-                score++;
-                btn.classList.add('border-green-500', 'bg-green-50');
-                feedbackText.innerHTML = `<strong>Dobrze!</strong><br>${q.rationale}`;
-                feedbackText.className = "text-green-800 text-sm";
-            } else {
-                btn.classList.add('border-red-500', 'bg-red-50');
-                feedbackText.innerHTML = `<strong>Błędna odpowiedź.</strong><br>${q.rationale}`;
-                feedbackText.className = "text-red-800 text-sm";
-            }
-            feedback.classList.remove('hidden');
+            const fBox = document.getElementById('feedback');
+            const fText = document.getElementById('feedback-text');
+            fBox.className = `mt-8 p-6 rounded-xl border-2 ${isCorrect ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`;
+            fText.innerHTML = `<span class="block text-lg font-bold mb-1">${isCorrect ? 'Doskonale!' : 'Nie tym razem...'}</span>${q.rationale}`;
+            fBox.classList.remove('hidden');
         };
 
-        const toggleStats = async () => {
-            const quizContainer = document.getElementById('quiz-container');
-            const statsArea = document.getElementById('stats-area');
-            const isShowingStats = !statsArea.classList.contains('hidden');
+        const updateVote = (ref, idx) => {
+            const data = {};
+            data[`counts.${idx}`] = increment(1);
+            updateDoc(ref, data);
+        };
 
-            if (!isShowingStats) {
-                quizContainer.classList.add('hidden');
-                statsArea.classList.remove('hidden');
-                document.getElementById('admin-toggle').innerText = "Widok Pytań";
-                startStatsSync();
+        const toggleStats = () => {
+            const q = document.getElementById('quiz-container');
+            const s = document.getElementById('stats-area');
+            const btn = document.getElementById('admin-toggle');
+
+            if (s.classList.contains('hidden')) {
+                q.classList.add('hidden');
+                s.classList.remove('hidden');
+                btn.innerText = "Zamknij";
+                loadStats();
             } else {
-                quizContainer.classList.remove('hidden');
-                statsArea.classList.add('hidden');
-                document.getElementById('admin-toggle').innerText = "Statystyki";
+                q.classList.remove('hidden');
+                s.classList.add('hidden');
+                btn.innerText = "Statystyki";
                 if (statsUnsubscribe) statsUnsubscribe();
             }
         };
 
-        const startStatsSync = () => {
-            if (!currentUser) {
-                document.getElementById('stats-container').innerHTML = '<p class="text-center text-slate-500">Statystyki niedostępne (brak połączenia).</p>';
-                return;
-            }
+        const loadStats = () => {
             const q = quizData[currentQuestion];
-            document.getElementById('stats-title').innerText = `Wyniki dla: ${q.question}`;
-            
+            const container = document.getElementById('stats-container');
+            container.innerHTML = '<p class="text-center py-10 text-slate-400 animate-pulse">Pobieranie wyników grupy...</p>';
+
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', q.id);
             statsUnsubscribe = onSnapshot(docRef, (doc) => {
                 if (doc.exists()) {
-                    renderBars(doc.data().counts, q.options, q.correct);
+                    const counts = doc.data().counts;
+                    const total = counts.reduce((a, b) => a + b, 0) || 1;
+                    container.innerHTML = '';
+                    
+                    q.options.forEach((opt, i) => {
+                        const pct = Math.round((counts[i] / total) * 100);
+                        const isCorrect = i === q.correct;
+                        const row = document.createElement('div');
+                        row.innerHTML = `
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="${isCorrect ? 'font-bold text-green-600' : 'text-slate-600'}">${opt} ${isCorrect ? '✓' : ''}</span>
+                                <span class="font-bold">${pct}%</span>
+                            </div>
+                            <div class="w-full bg-slate-100 h-3 rounded-full">
+                                <div class="bar-transition h-full ${isCorrect ? 'bg-green-500' : 'bg-indigo-400'} rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                        `;
+                        container.appendChild(row);
+                    });
                 } else {
-                    renderBars([0,0,0,0], q.options, q.correct);
+                    container.innerHTML = '<p class="text-center py-10 text-slate-400">Brak oddanych głosów w tej sesji.</p>';
                 }
-            }, (err) => {
-                console.error("Stats subscription error:", err);
-                document.getElementById('stats-container').innerHTML = '<p class="text-center text-red-500">Błąd ładowania danych.</p>';
-            });
-        };
-
-        const renderBars = (counts, options, correctIdx) => {
-            const container = document.getElementById('stats-container');
-            container.innerHTML = '';
-            const total = counts.reduce((a, b) => a + b, 0) || 1;
-
-            options.forEach((opt, i) => {
-                const pct = Math.round((counts[i] / total) * 100);
-                const isCorrect = i === correctIdx;
-                
-                const item = document.createElement('div');
-                item.innerHTML = `
-                    <div class="flex justify-between text-sm mb-1">
-                        <span class="${isCorrect ? 'font-bold text-green-600' : 'text-slate-600'}">${opt} ${isCorrect ? '✓' : ''}</span>
-                        <span class="font-bold">${pct}% (${counts[i]})</span>
-                    </div>
-                    <div class="w-full bg-slate-100 h-4 rounded-full overflow-hidden">
-                        <div class="bar-transition h-full ${isCorrect ? 'bg-green-500' : 'bg-slate-300'}" style="width: ${pct}%"></div>
-                    </div>
-                `;
-                container.appendChild(item);
             });
         };
 
         document.getElementById('next-btn').onclick = () => {
             currentQuestion++;
-            if (currentQuestion < quizData.length) {
-                showQuestion();
-            } else {
-                showFinalResults();
+            if (currentQuestion < quizData.length) showQuestion();
+            else {
+                document.getElementById('quiz-container').classList.add('hidden');
+                document.getElementById('results-area').classList.remove('hidden');
+                document.getElementById('final-score').innerText = `${score} / ${quizData.length}`;
             }
-        };
-
-        const showFinalResults = () => {
-            document.getElementById('quiz-container').classList.add('hidden');
-            document.getElementById('stats-area').classList.add('hidden');
-            document.getElementById('results-area').classList.remove('hidden');
-            const pct = Math.round((score/quizData.length)*100);
-            document.getElementById('score-circle').innerText = `${pct}%`;
-            document.getElementById('result-comment').innerText = pct >= 70 ? "Świetny wynik!" : "Warto przeanalizować raport.";
         };
 
         document.getElementById('admin-toggle').onclick = toggleStats;
         document.getElementById('back-to-quiz').onclick = toggleStats;
 
-        initAuth();
+        init();
     </script>
 </body>
 </html>
