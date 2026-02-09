@@ -5,67 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test Wiedzy: Nastolatki 3.0 - Live</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Biblioteka do generowania kodów QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
         .bar-transition { transition: width 1s ease-in-out; }
+        #qr-code img { margin: 0 auto; border: 8px solid white; border-radius: 8px; }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen p-4">
 
-    <div id="app" class="max-w-2xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
+    <div id="app" class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden mb-8">
         <!-- Header -->
         <div class="bg-indigo-600 p-6 text-white text-center relative">
             <h1 class="text-xl font-bold">Nastolatki 3.0: Live Quiz</h1>
             <p id="header-subtitle" class="text-indigo-100 text-sm mt-1">Sprawdź swoją wiedzę i zobacz wyniki grupy</p>
-            <button id="admin-toggle" class="absolute top-4 right-4 text-xs bg-indigo-700 hover:bg-indigo-800 px-2 py-1 rounded">
-                Statystyki
+            <button id="admin-toggle" class="absolute top-4 right-4 text-xs bg-indigo-700 hover:bg-indigo-800 px-3 py-1 rounded-full border border-indigo-400">
+                Panel Sterowania
             </button>
         </div>
 
-        <!-- Quiz Container -->
-        <div id="quiz-container" class="p-6">
-            <div id="progress-bar" class="w-full bg-slate-100 h-2 rounded-full mb-6">
-                <div id="progress-fill" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-            </div>
-
-            <div id="question-area">
-                <p id="question-number" class="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-2"></p>
-                <h2 id="question-text" class="text-lg font-bold text-slate-800 mb-6 leading-tight"></h2>
+        <div class="flex flex-col md:flex-row">
+            <!-- Main Content Area -->
+            <div id="main-content" class="flex-grow p-6 border-r border-slate-100">
                 
-                <div id="options-grid" class="grid gap-3"></div>
+                <!-- Quiz Container -->
+                <div id="quiz-container">
+                    <div id="progress-bar" class="w-full bg-slate-100 h-2 rounded-full mb-6">
+                        <div id="progress-fill" class="bg-indigo-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
 
-                <div id="feedback" class="mt-6 p-4 rounded-lg hidden">
-                    <p id="feedback-text" class="text-sm"></p>
-                    <button id="next-btn" class="mt-4 w-full bg-slate-800 text-white py-3 rounded-xl font-semibold hover:bg-slate-700 transition-colors">
-                        Następne pytanie
+                    <div id="question-area">
+                        <p id="question-number" class="text-indigo-600 font-semibold text-sm uppercase tracking-wider mb-2"></p>
+                        <h2 id="question-text" class="text-lg font-bold text-slate-800 mb-6 leading-tight"></h2>
+                        
+                        <div id="options-grid" class="grid gap-3"></div>
+
+                        <div id="feedback" class="mt-6 p-4 rounded-lg hidden border">
+                            <p id="feedback-text" class="text-sm"></p>
+                            <button id="next-btn" class="mt-4 w-full bg-slate-800 text-white py-3 rounded-xl font-semibold hover:bg-slate-700 transition-colors">
+                                Następne pytanie
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin / Stats Area -->
+                <div id="stats-area" class="hidden">
+                    <h2 id="stats-title" class="text-lg font-bold text-slate-800 mb-4">Wyniki grupy w czasie rzeczywistym</h2>
+                    <div id="stats-container" class="space-y-6">
+                        <!-- Bars will be injected here -->
+                    </div>
+                    <button id="back-to-quiz" class="mt-8 w-full border-2 border-slate-200 text-slate-600 py-3 rounded-xl font-semibold hover:bg-slate-50">
+                        Powrót do pytań
+                    </button>
+                </div>
+
+                <!-- Results Area -->
+                <div id="results-area" class="p-8 text-center hidden">
+                    <div class="mb-6">
+                        <span id="score-circle" class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-indigo-100 text-indigo-600 text-3xl font-bold"></span>
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800 mb-2">Koniec testu!</h2>
+                    <p id="result-comment" class="text-slate-600 mb-8"></p>
+                    <button onclick="location.reload()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-indigo-700">
+                        Zacznij od nowa
                     </button>
                 </div>
             </div>
-        </div>
 
-        <!-- Admin / Stats Area -->
-        <div id="stats-area" class="p-6 hidden">
-            <h2 id="stats-title" class="text-lg font-bold text-slate-800 mb-4">Wyniki grupy w czasie rzeczywistym</h2>
-            <div id="stats-container" class="space-y-6">
-                <!-- Bars will be injected here -->
+            <!-- Sidebar with QR Code (Visible in Stats Mode) -->
+            <div id="sidebar-qr" class="hidden md:flex w-full md:w-64 bg-slate-50 p-6 flex-col items-center justify-center border-l border-slate-100 text-center">
+                <p class="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">Dołącz do głosowania</p>
+                <div id="qr-code" class="mb-4 shadow-sm"></div>
+                <p class="text-[10px] text-slate-400 break-all px-2">mpajaczkowskilekcje-design.github.io/cyberbezpieczenstwo_dla_pedagogow/</p>
             </div>
-            <button id="back-to-quiz" class="mt-8 w-full border-2 border-slate-200 text-slate-600 py-3 rounded-xl font-semibold hover:bg-slate-50">
-                Powrót do pytań
-            </button>
-        </div>
-
-        <!-- Results Area -->
-        <div id="results-area" class="p-8 text-center hidden">
-            <div class="mb-6">
-                <span id="score-circle" class="inline-flex items-center justify-center w-24 h-24 rounded-full bg-indigo-100 text-indigo-600 text-3xl font-bold"></span>
-            </div>
-            <h2 class="text-2xl font-bold text-slate-800 mb-2">Koniec testu!</h2>
-            <p id="result-comment" class="text-slate-600 mb-8"></p>
-            <button onclick="location.reload()" class="bg-indigo-600 text-white px-8 py-3 rounded-xl font-semibold hover:bg-indigo-700">
-                Zacznij od nowa
-            </button>
         </div>
     </div>
 
@@ -80,6 +96,7 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'nask-quiz-v1';
+        const githubUrl = "https://mpajaczkowskilekcje-design.github.io/cyberbezpieczenstwo_dla_pedagogow/";
 
         const quizData = [
             { id: "q1", question: "W jakim wieku przeciętny polski nastolatek otrzymuje pierwszy smartfon z internetem?", options: ["7–8 lat", "9–10 lat", "11–12 lat", "Powyżej 13 lat"], correct: 1, rationale: "41% dzieci otrzymuje pierwszy telefon w wieku 9-10 lat." },
@@ -98,6 +115,20 @@
         let score = 0;
         let answered = false;
         let statsUnsubscribe = null;
+
+        // Inicjalizacja kodu QR
+        const generateQR = () => {
+            const qrContainer = document.getElementById("qr-code");
+            qrContainer.innerHTML = "";
+            new QRCode(qrContainer, {
+                text: githubUrl,
+                width: 160,
+                height: 160,
+                colorDark : "#4f46e5",
+                colorLight : "#f8fafc",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        };
 
         const initAuth = async () => {
             await signInAnonymously(auth);
@@ -166,16 +197,19 @@
         const toggleStats = () => {
             const quizContainer = document.getElementById('quiz-container');
             const statsArea = document.getElementById('stats-area');
-            const isAdmin = statsArea.classList.contains('hidden');
+            const sidebarQr = document.getElementById('sidebar-qr');
+            const isShowingStats = !statsArea.classList.contains('hidden');
 
-            if (isAdmin) {
+            if (!isShowingStats) {
                 quizContainer.classList.add('hidden');
                 statsArea.classList.remove('hidden');
+                sidebarQr.classList.remove('hidden');
                 document.getElementById('admin-toggle').innerText = "Widok Pytań";
                 startStatsSync();
             } else {
                 quizContainer.classList.remove('hidden');
                 statsArea.classList.add('hidden');
+                sidebarQr.classList.add('hidden');
                 document.getElementById('admin-toggle').innerText = "Statystyki";
                 if (statsUnsubscribe) statsUnsubscribe();
             }
@@ -230,6 +264,7 @@
         const showFinalResults = () => {
             document.getElementById('quiz-container').classList.add('hidden');
             document.getElementById('stats-area').classList.add('hidden');
+            document.getElementById('sidebar-qr').classList.add('hidden');
             document.getElementById('results-area').classList.remove('hidden');
             const pct = Math.round((score/quizData.length)*100);
             document.getElementById('score-circle').innerText = `${pct}%`;
@@ -239,7 +274,10 @@
         document.getElementById('admin-toggle').onclick = toggleStats;
         document.getElementById('back-to-quiz').onclick = toggleStats;
 
-        initAuth().then(showQuestion);
+        window.onload = () => {
+            generateQR();
+            initAuth().then(showQuestion);
+        };
     </script>
 </body>
 </html>
