@@ -13,7 +13,6 @@
         .option-btn:disabled { cursor: not-allowed; opacity: 0.7; }
         .bar-transition { transition: width 1s ease-in-out; }
         #qr-code img { margin: 0 auto; border: 8px solid white; border-radius: 8px; }
-        /* Dodatkowy styl dla stanu ładowania */
         .loading-overlay {
             position: fixed;
             inset: 0;
@@ -29,9 +28,10 @@
 
     <!-- Overlay ładowania -->
     <div id="loading" class="loading-overlay">
-        <div class="text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-            <p class="text-slate-600 font-medium">Łączenie z panelem wyników...</p>
+        <div class="text-center p-6">
+            <div id="loading-spinner" class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+            <p id="loading-text" class="text-slate-600 font-medium">Łączenie z panelem wyników...</p>
+            <button id="retry-btn" class="hidden mt-4 bg-indigo-600 text-white px-4 py-2 rounded-lg" onclick="location.reload()">Spróbuj ponownie</button>
         </div>
     </div>
 
@@ -94,7 +94,7 @@
                 </div>
             </div>
 
-            <!-- Sidebar with QR Code (Visible in Stats Mode) -->
+            <!-- Sidebar with QR Code -->
             <div id="sidebar-qr" class="hidden md:flex w-full md:w-64 bg-slate-50 p-6 flex-col items-center justify-center border-l border-slate-100 text-center">
                 <p class="text-xs font-bold text-slate-500 uppercase mb-4 tracking-widest">Dołącz do głosowania</p>
                 <div id="qr-code" class="mb-4 shadow-sm"></div>
@@ -134,10 +134,12 @@
         let answered = false;
         let statsUnsubscribe = null;
         let currentUser = null;
+        let appStarted = false;
 
         // Inicjalizacja kodu QR
         const generateQR = () => {
             const qrContainer = document.getElementById("qr-code");
+            if (!qrContainer) return;
             qrContainer.innerHTML = "";
             new QRCode(qrContainer, {
                 text: githubUrl,
@@ -149,29 +151,44 @@
             });
         };
 
-        // Zintegrowane logowanie i inicjalizacja aplikacji
-        const initApp = async () => {
-            onAuthStateChanged(auth, async (user) => {
+        const startApp = () => {
+            if (appStarted) return;
+            appStarted = true;
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            generateQR();
+            showQuestion();
+        };
+
+        const initAuth = async () => {
+            // Rezerwowy timer - jeśli logowanie zawiedzie, spróbuj pokazać quiz bez statystyk po 5s
+            const timeout = setTimeout(() => {
+                if (!currentUser) {
+                    console.warn("Auth timeout - starting limited mode");
+                    startApp();
+                }
+            }, 5000);
+
+            onAuthStateChanged(auth, (user) => {
                 if (user) {
                     currentUser = user;
-                    document.getElementById('loading').classList.add('hidden');
-                    document.getElementById('app').classList.remove('hidden');
-                    generateQR();
-                    showQuestion();
-                } else {
-                    try {
-                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                            await signInWithCustomToken(auth, __initial_auth_token);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    } catch (err) {
-                        console.error("Auth error:", err);
-                        const loadingMsg = document.querySelector('#loading p');
-                        if (loadingMsg) loadingMsg.innerText = "Błąd połączenia. Spróbuj odświeżyć stronę.";
-                    }
+                    clearTimeout(timeout);
+                    startApp();
                 }
             });
+
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Firebase Auth Error:", err);
+                document.getElementById('loading-text').innerText = "Błąd autoryzacji. Sprawdź połączenie.";
+                document.getElementById('loading-spinner').classList.add('hidden');
+                document.getElementById('retry-btn').classList.remove('hidden');
+            }
         };
 
         const saveVote = async (questionId, optionIndex) => {
@@ -213,7 +230,7 @@
             const q = quizData[currentQuestion];
             const btns = document.querySelectorAll('.option-btn');
 
-            await saveVote(q.id, index);
+            saveVote(q.id, index);
 
             btns.forEach((b, i) => {
                 b.disabled = true;
@@ -238,26 +255,26 @@
         const toggleStats = async () => {
             const quizContainer = document.getElementById('quiz-container');
             const statsArea = document.getElementById('stats-area');
-            const sidebarQr = document.getElementById('sidebar-qr');
             const isShowingStats = !statsArea.classList.contains('hidden');
 
             if (!isShowingStats) {
                 quizContainer.classList.add('hidden');
                 statsArea.classList.remove('hidden');
-                sidebarQr.classList.remove('hidden');
                 document.getElementById('admin-toggle').innerText = "Widok Pytań";
                 startStatsSync();
             } else {
                 quizContainer.classList.remove('hidden');
                 statsArea.classList.add('hidden');
-                sidebarQr.classList.add('hidden');
                 document.getElementById('admin-toggle').innerText = "Statystyki";
                 if (statsUnsubscribe) statsUnsubscribe();
             }
         };
 
         const startStatsSync = () => {
-            if (!currentUser) return;
+            if (!currentUser) {
+                document.getElementById('stats-container').innerHTML = '<p class="text-center text-slate-500">Statystyki niedostępne (brak połączenia).</p>';
+                return;
+            }
             const q = quizData[currentQuestion];
             document.getElementById('stats-title').innerText = `Wyniki dla: ${q.question}`;
             
@@ -268,7 +285,10 @@
                 } else {
                     renderBars([0,0,0,0], q.options, q.correct);
                 }
-            }, (err) => console.error("Stats subscription error:", err));
+            }, (err) => {
+                console.error("Stats subscription error:", err);
+                document.getElementById('stats-container').innerHTML = '<p class="text-center text-red-500">Błąd ładowania danych.</p>';
+            });
         };
 
         const renderBars = (counts, options, correctIdx) => {
@@ -306,7 +326,6 @@
         const showFinalResults = () => {
             document.getElementById('quiz-container').classList.add('hidden');
             document.getElementById('stats-area').classList.add('hidden');
-            document.getElementById('sidebar-qr').classList.add('hidden');
             document.getElementById('results-area').classList.remove('hidden');
             const pct = Math.round((score/quizData.length)*100);
             document.getElementById('score-circle').innerText = `${pct}%`;
@@ -316,8 +335,7 @@
         document.getElementById('admin-toggle').onclick = toggleStats;
         document.getElementById('back-to-quiz').onclick = toggleStats;
 
-        // Uruchomienie aplikacji
-        initApp();
+        initAuth();
     </script>
 </body>
 </html>
