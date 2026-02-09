@@ -12,6 +12,9 @@
         .option-btn:disabled { cursor: not-allowed; opacity: 0.8; }
         #qr-code img { margin: 0 auto; border: 4px solid white; border-radius: 4px; }
         .bar-transition { transition: width 0.8s ease-out; }
+        /* Styl dla płynnego pojawiania się */
+        #app { opacity: 0; transition: opacity 0.5s ease-in; }
+        #app.visible { opacity: 1; }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen p-4">
@@ -84,8 +87,9 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
         import { getFirestore, doc, setDoc, updateDoc, increment, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
 
+        // Konfiguracja Firebase
         const firebaseConfig = JSON.parse(__firebase_config);
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -112,8 +116,12 @@
         let statsUnsubscribe = null;
         let userAuth = null;
 
-        const init = async () => {
-            // Kod QR generujemy natychmiast, bez czekania na nic
+        // Natychmiastowy start
+        window.onload = () => {
+            const appEl = document.getElementById('app');
+            appEl.classList.add('visible');
+            
+            // Kod QR bez opóźnień
             new QRCode(document.getElementById("qr-code"), {
                 text: githubUrl,
                 width: 140,
@@ -122,8 +130,10 @@
                 colorLight : "#f8fafc"
             });
 
-            // Logowanie w tle - jeśli się uda, będziemy mieć statystyki
-            signInAnonymously(auth).then(res => userAuth = res.user).catch(e => console.warn("Statystyki wyłączone (tryb offline)"));
+            // Próba połączenia w tle (nie blokuje quizu)
+            signInAnonymously(auth)
+                .then(res => userAuth = res.user)
+                .catch(e => console.log("Tryb offline - statystyki niedostępne"));
             
             showQuestion();
         };
@@ -138,7 +148,7 @@
             grid.innerHTML = '';
             q.options.forEach((opt, i) => {
                 const btn = document.createElement('button');
-                btn.className = "option-btn text-left p-5 border-2 border-slate-200 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition-all font-medium text-slate-700";
+                btn.className = "option-btn text-left p-5 border-2 border-slate-200 rounded-2xl hover:border-indigo-500 hover:bg-indigo-50 transition-all font-medium text-slate-700 shadow-sm";
                 btn.innerText = opt;
                 btn.onclick = () => handleAnswer(i, btn);
                 grid.appendChild(btn);
@@ -155,20 +165,28 @@
             
             if (isCorrect) score++;
 
-            // Zapisz głos jeśli jesteśmy zalogowani
+            // Zapisz głos asynchronicznie, jeśli jesteśmy połączeni
             if (userAuth) {
                 const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', q.id);
                 getDoc(docRef).then(snap => {
-                    if (!snap.exists()) setDoc(docRef, { counts: [0, 0, 0, 0] }).then(() => updateVote(docRef, index));
-                    else updateVote(docRef, index);
-                });
+                    if (!snap.exists()) {
+                        setDoc(docRef, { counts: [0, 0, 0, 0] }).then(() => updateVote(docRef, index));
+                    } else {
+                        updateVote(docRef, index);
+                    }
+                }).catch(() => {});
             }
 
-            // UI feedback
+            // UI feedback natychmiastowy
             document.querySelectorAll('.option-btn').forEach((b, i) => {
                 b.disabled = true;
-                if (i === q.correct) b.classList.add('border-green-500', 'bg-green-50', 'text-green-700');
-                else if (i === index && !isCorrect) b.classList.add('border-red-500', 'bg-red-50', 'text-red-700');
+                if (i === q.correct) {
+                    b.classList.replace('border-slate-200', 'border-green-500');
+                    b.classList.add('bg-green-50', 'text-green-700');
+                } else if (i === index && !isCorrect) {
+                    b.classList.replace('border-slate-200', 'border-red-500');
+                    b.classList.add('bg-red-50', 'text-red-700');
+                }
             });
 
             const fBox = document.getElementById('feedback');
@@ -181,7 +199,7 @@
         const updateVote = (ref, idx) => {
             const data = {};
             data[`counts.${idx}`] = increment(1);
-            updateDoc(ref, data);
+            updateDoc(ref, data).catch(() => {});
         };
 
         const toggleStats = () => {
@@ -205,7 +223,12 @@
         const loadStats = () => {
             const q = quizData[currentQuestion];
             const container = document.getElementById('stats-container');
-            container.innerHTML = '<p class="text-center py-10 text-slate-400 animate-pulse">Pobieranie wyników grupy...</p>';
+            container.innerHTML = '<p class="text-center py-10 text-slate-400 animate-pulse font-medium">Synchronizacja wyników grupy...</p>';
+
+            if (!userAuth) {
+                container.innerHTML = '<p class="text-center py-10 text-slate-500">Statystyki niedostępne w trybie offline.</p>';
+                return;
+            }
 
             const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'stats', q.id);
             statsUnsubscribe = onSnapshot(docRef, (doc) => {
@@ -223,23 +246,27 @@
                                 <span class="${isCorrect ? 'font-bold text-green-600' : 'text-slate-600'}">${opt} ${isCorrect ? '✓' : ''}</span>
                                 <span class="font-bold">${pct}%</span>
                             </div>
-                            <div class="w-full bg-slate-100 h-3 rounded-full">
+                            <div class="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
                                 <div class="bar-transition h-full ${isCorrect ? 'bg-green-500' : 'bg-indigo-400'} rounded-full" style="width: ${pct}%"></div>
                             </div>
                         `;
                         container.appendChild(row);
                     });
                 } else {
-                    container.innerHTML = '<p class="text-center py-10 text-slate-400">Brak oddanych głosów w tej sesji.</p>';
+                    container.innerHTML = '<p class="text-center py-10 text-slate-400">Poczekaj na pierwszy głos...</p>';
                 }
+            }, (err) => {
+                container.innerHTML = '<p class="text-center py-10 text-red-400">Błąd połączenia z bazą.</p>';
             });
         };
 
         document.getElementById('next-btn').onclick = () => {
             currentQuestion++;
-            if (currentQuestion < quizData.length) showQuestion();
-            else {
+            if (currentQuestion < quizData.length) {
+                showQuestion();
+            } else {
                 document.getElementById('quiz-container').classList.add('hidden');
+                document.getElementById('stats-area').classList.add('hidden');
                 document.getElementById('results-area').classList.remove('hidden');
                 document.getElementById('final-score').innerText = `${score} / ${quizData.length}`;
             }
@@ -247,8 +274,6 @@
 
         document.getElementById('admin-toggle').onclick = toggleStats;
         document.getElementById('back-to-quiz').onclick = toggleStats;
-
-        init();
     </script>
 </body>
 </html>
